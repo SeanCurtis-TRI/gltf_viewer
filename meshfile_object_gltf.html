@@ -5,24 +5,29 @@
 		<title>MeshCat - glTF viewer</title>
 	</head>
 	<body>
-		<div><input type="file" id="file-selector" accept=".gltf"/></div>
+		<div><button type="button" id="new-loader">Load glTF</button>
+			<button type="button" id="new-reloader">Reload</button></div>
 		<script>
-			const fileSelector = document.getElementById('file-selector');
-			fileSelector.addEventListener('input', (event) => {
-			  const fileList = event.target.files;
-			  if (fileList.length > 0) {
-				readGltf(fileList[0]);
-				// By clearing the name, we can reselect the same file and reload it (for when the
-				// file in question changes). I tried changing its "value" to being a name that
-				// isn't actually the file name (but related to it), but apparently clearing it
-				// is the only write ability I have.
-
-				// TODO(SeanCurtis-TRI): A "reload" button would be nice. But, apparently,
-				// FileReader can't successfully read a file from disk if the js File object has
-				// metadata that doesn't agree with the disk. I particularly noted this w.r.t.
-				// the lastModified time stamp. If it doesn't agree, FileReader doesn't read.
-				fileSelector.value = '';
-			  }			  
+			var current_handle = null;
+			async function loadFromHandle() {
+				const file = await current_handle.getFile();
+				const contents = await file.text();
+				addToWorld(contents);
+				return file.name;
+			};
+			const myReloader = document.getElementById("new-reloader");
+			myReloader.addEventListener('click', async () => {
+				if (current_handle !== null) {
+					await loadFromHandle();
+				}
+				
+			});
+			const myLoader = document.getElementById("new-loader");
+			myLoader.addEventListener('click', async () => {
+				[current_handle] = await window.showOpenFilePicker();
+				let name = await loadFromHandle();
+				myLoader.innerText = "Load glTF (" + name + ")";
+				
 			});
 		  </script>
         <div id="meshcat-pane">
@@ -35,41 +40,37 @@
 			viewer.set_property(['Background'], "top_color", [.95, .95, 1.0])
     		viewer.set_property(['Background'], "bottom_color", [.32, .32, .35])
 
-			function readGltf(gltf) {
-				const reader = new FileReader();
-				reader.addEventListener('load', (event) => {
-					// Clear the scene.
-					viewer.handle_command({
-						type: "delete",
-						path: "/meshcat/mesh_test"
-					});
-					// Load the object.
-					viewer.handle_command({
-						type: "set_object",
-						path: "/meshcat/mesh_test",
-						object: {
-							metadata: {version: 4.5, type: "Object"},
-							geometries: [],
-							materials: [],
-							object: {
-								uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
-								type: "_meshfile_object",
-								format: "gltf",
-								data: event.target.result
-							}
-						}
-					});
-					// Why do these require a y-up to z-up rotation?
-					viewer.handle_command({
-						type: "set_transform",
-						path: "/meshcat/mesh_test",
-						matrix: [1, 0, 0, 0, 
-								0, 0, 1, 0, 
-								0, -1, 0, 0,
-								0, 0, 0, 1]
-					})
+			function addToWorld(gltf_text) {
+				// Clear the scene.
+				viewer.handle_command({
+					type: "delete",
+					path: "/meshcat/mesh_test"
 				});
-				reader.readAsText(gltf);
+				// Load the object.
+				viewer.handle_command({
+					type: "set_object",
+					path: "/meshcat/mesh_test",
+					object: {
+						metadata: {version: 4.5, type: "Object"},
+						geometries: [],
+						materials: [],
+						object: {
+							uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+							type: "_meshfile_object",
+							format: "gltf",
+							data: gltf_text
+						}
+					}
+				});
+				// Why do these require a y-up to z-up rotation?
+				viewer.handle_command({
+					type: "set_transform",
+					path: "/meshcat/mesh_test",
+					matrix: [1, 0, 0, 0, 
+							0, 0, 1, 0, 
+							0, -1, 0, 0,
+							0, 0, 0, 1]
+				})
 			}
         </script>
 
