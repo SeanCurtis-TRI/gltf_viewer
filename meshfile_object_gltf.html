@@ -7,6 +7,8 @@
 	<body>
 		<div><button type="button" id="new-loader">Load glTF</button>
 			<button type="button" id="new-reloader">Reload</button></div>
+			<div id="meshcat-pane">
+			</div>
 		<script>
 			var current_handle = null;
 			async function loadFromHandle() {
@@ -29,9 +31,32 @@
 				myLoader.innerText = "Load glTF (" + name + ")";
 				
 			});
+			var viewer_screen = document.getElementById("meshcat-pane");
+			viewer_screen.addEventListener('dragover', (event) => {
+				event.stopPropagation();
+				event.preventDefault();
+				event.dataTransfer.dropEffect = 'copy';
+			});
+			viewer_screen.addEventListener('drop', async (event) => {
+				event.stopPropagation();
+				event.preventDefault();
+
+				// Get the *file handle* from the data transfer event so that we can set
+				// current_handle to enable reload.
+				const fileHandlesPromises = [...event.dataTransfer.items]
+					.filter((item) => item.kind === 'file')
+					.map((item) => item.getAsFileSystemHandle());
+
+				for await (const handle of fileHandlesPromises) {
+					if (handle.kind === 'file') {
+						current_handle = handle;
+						await loadFromHandle();
+						myLoader.innerText = "Load glTF (" + handle.name + ")";
+						break;
+					}
+				}
+			});
 		  </script>
-        <div id="meshcat-pane">
-        </div>
 
         <script src="main.min.js"></script>
         <script>
