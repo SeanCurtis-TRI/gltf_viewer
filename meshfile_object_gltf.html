@@ -6,7 +6,8 @@
 	</head>
 	<body>
 		<div><button type="button" id="new-loader">Load glTF</button>
-			<button type="button" id="new-reloader">Reload</button></div>
+			<button type="button" id="new-reloader">Reload</button>
+		    <button type="button" id="env_select">Environment Map</button></div>
 			<div id="meshcat-pane">
 			</div>
 		<script>
@@ -26,10 +27,48 @@
 			});
 			const myLoader = document.getElementById("new-loader");
 			myLoader.addEventListener('click', async () => {
-				[current_handle] = await window.showOpenFilePicker();
+				const pickerOpts = {
+					types: [
+						{
+							description: "glTF",
+							accept: {
+								"unknown/*": [".gltf"],
+							},
+						},
+					],
+					multiple: false
+				};
+				[current_handle] = await window.showOpenFilePicker(pickerOpts);
 				let name = await loadFromHandle();
 				myLoader.innerText = "Load glTF (" + name + ")";
 				
+			});
+			const envLoader = document.getElementById("env_select");
+			envLoader.addEventListener('click', async () => {
+				const pickerOpts = {
+					types: [
+						{
+							description: "Images",
+							accept: {
+								"image/*": [".png", ".png", ".bmp"],
+							},
+						},
+					],
+					multiple: false
+				};
+				[current_handle] = await window.showOpenFilePicker(pickerOpts);
+				const file = await current_handle.getFile();
+				var reader = new FileReader();
+				reader.readAsDataURL(file);
+				reader.onload = function () {
+					addEnvironmentMap(reader.result);
+				};
+				reader.onerror = function (error) {
+					console.log('Error: ', error);
+				}
+				// const contents = await file.arrayBuffer();
+				// console.info("Env map mime type:", file.type);
+				// addEnvironmentMap(contents);
 			});
 			var viewer_screen = document.getElementById("meshcat-pane");
 			viewer_screen.addEventListener('dragover', (event) => {
@@ -56,6 +95,7 @@
 					}
 				}
 			});
+
 		  </script>
 
         <script src="main.min.js"></script>
@@ -64,6 +104,12 @@
 
 			viewer.set_property(['Background'], "top_color", [.95, .95, 1.0])
     		viewer.set_property(['Background'], "bottom_color", [.32, .32, .35])
+
+			function addEnvironmentMap(image_contents) {
+				viewer.set_property(["Background", "<object>"], "environment_map", image_contents);
+				viewer.set_dirty();
+				viewer.render();
+			};
 
 			function addToWorld(gltf_text) {
 				// Clear the scene.
